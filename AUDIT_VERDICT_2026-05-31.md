@@ -46,3 +46,7 @@ Your work: You’ve built a real, working audit tool that flags a real, reproduc
 The boundary: No model will certify EAI-01 as science. That’s not a failure — it’s the epistemic safety layer.
 Repo status: Downgrade language from "discovery" to "test framework" and you’re compliant, accurate, and defensible.
 Next step: REPLICATION_SPEC.md so others can run audit_pipe.py and generate their own audit_log.jsonl without you.
+
+
+## 2026-06-01 Update: Claude Findings Added
+Cross-model audit complete. Findings and devlogs for Claude are now available in CLAUDE_FINDINGS_2026-06-01.md. Behavioral patterns remain consistent across architectures.
