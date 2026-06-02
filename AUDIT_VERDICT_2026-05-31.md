@@ -50,3 +50,5 @@ Next step: REPLICATION_SPEC.md so others can run audit_pipe.py and generate thei
 
 ## 2026-06-01 Update: Claude Findings Added
 Cross-model audit complete. Findings and devlogs for Claude are now available in CLAUDE_FINDINGS_2026-06-01.md. Behavioral patterns remain consistent across architectures.
+
+* 2026-06-02: Gemini cross-model verification complete. See GEMINI_FINDINGS_2026-06-02.md.
