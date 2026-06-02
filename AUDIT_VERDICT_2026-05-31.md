@@ -54,3 +54,5 @@ Cross-model audit complete. Findings and devlogs for Claude are now available in
 * 2026-06-02: Gemini cross-model verification complete. See GEMINI_FINDINGS_2026-06-02.md.
 
 * 2026-06-02: Llama audit logs integrated. See LLAMA_FINDINGS_2026-06-02.md.
+
+* 2026-06-02: ChatGPT forensic audit logs integrated. See CHATGPT_FINDINGS_2026-06-02.md.
