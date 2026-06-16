@@ -126,3 +126,260 @@ these are the full dev logs i will audit these later timestamp 2:34 pm EST 6/8/2
 -------------------------------------------------------------------------------------
 6/13/2026  Lab climate control secured via maternal research grant
 by Darcy and Dale Lezatte
+---------------------------------------------------------------------------
+6/16/2026 secured Darcy and Dale Lezatte with home entertainment stytems saving from my AI services
+
+The following are updadted dev logs to the OMEGA project with my updadted pipline with added ENR stabilier
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from "recharts";
+
+// ─── Verified PID Constants (Routh-Hurwitz PASS, margin 0.729) ───
+const KP = 0.5;
+const KI = 0.1;
+const KD = 0.25;
+const TAU = 0.18;        // Intervention threshold (18%)
+const TAU_DELAY = 0.45;
+const LAMBDA_DRIFT = 0.022;
+const K_GAIN = 1.25;
+
+// ─── Plant simulation G(s) via Euler integration ─────────────────
+function stepPlant(state, u, dt) {
+  // G(s) = K_gain / ((tau_delay*s + 1)(s - lambda_drift))
+  // State-space: x1' = x2, x2' = (K_gain*u - x2 - (1-lambda_drift*tau_delay)*x1) / tau_delay
+  const { x1, x2 } = state;
+  const dx1 = x2;
+  const dx2 = (K_GAIN * u - x2 * (1 + TAU_DELAY * LAMBDA_DRIFT) + LAMBDA_DRIFT * x1) / TAU_DELAY;
+  return {
+    x1: x1 + dx1 * dt,
+    x2: x2 + dx2 * dt,
+    y: x1,
+  };
+}
+
+const PALETTE = {
+  bg: "#0a0d14",
+  panel: "#0f1320",
+  border: "#1c2340",
+  accent: "#00e5ff",
+  warn: "#ff6b35",
+  good: "#39ff8f",
+  dim: "#3a4060",
+  text: "#c8d0e8",
+  muted: "#5a6280",
+};
+
+const mono = "'JetBrains Mono', 'Fira Mono', 'Courier New', monospace";
+
+export default function ENRController() {
+  const [running, setRunning] = useState(false);
+  const [data, setData] = useState([]);
+  const [pid, setPid] = useState({ kp: KP, ki: KI, kd: KD });
+  const [disturbance, setDisturbance] = useState(false);
+  const [status, setStatus] = useState("STANDBY");
+  const [margin, setMargin] = useState(0.729);
+
+  const simRef = useRef({
+    t: 0,
+    integral: 0,
+    prevError: 0,
+    plant: { x1: 0.3, x2: 0, y: 0.3 },
+    target: 0.0,
+  });
+
+  const tick = useCallback(() => {
+    const dt = 0.05;
+    const sim = simRef.current;
+
+    // Inject disturbance
+    const dist = disturbance ? 0.4 * Math.sin(sim.t * 1.5) + 0.1 : 0;
+    const current = sim.plant.y + dist;
+    const error = Math.abs(sim.target - current);
+
+    // PID controller — only fires above threshold
+    let gamma = 0;
+    if (error >= TAU) {
+      sim.integral += error * dt;
+      const derivative = (error - sim.prevError) / dt;
+      gamma = pid.kp * error + pid.ki * sim.integral + pid.kd * derivative;
+      gamma = Math.max(-2, Math.min(2, gamma)); // clamp output
+    }
+    sim.prevError = error;
+
+    // Advance plant
+    sim.plant = stepPlant(sim.plant, -gamma, dt);
+    sim.t += dt;
+
+    // Routh margin (live, updates with K changes)
+    const b = 1 - LAMBDA_DRIFT * TAU_DELAY + pid.kd * K_GAIN;
+    const c = pid.kp * K_GAIN - LAMBDA_DRIFT;
+    const d = pid.ki * K_GAIN;
+    const a = TAU_DELAY;
+    const liveMargin = parseFloat((b * c - a * d).toFixed(4));
+    setMargin(liveMargin);
+
+    const stable = liveMargin > 0;
+    setStatus(
+      !stable ? "⚠ UNSTABLE" :
+      error >= TAU ? "● CORRECTING" :
+      "✓ LOCKED"
+    );
+
+    setData(prev => {
+      const next = [...prev, {
+        t: parseFloat(sim.t.toFixed(2)),
+        error: parseFloat(error.toFixed(4)),
+        gamma: parseFloat(gamma.toFixed(4)),
+        plant: parseFloat(current.toFixed(4)),
+        threshold: TAU,
+      }];
+      return next.length > 200 ? next.slice(-200) : next;
+    });
+  }, [pid, disturbance]);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(tick, 50);
+    return () => clearInterval(id);
+  }, [running, tick]);
+
+  const reset = () => {
+    simRef.current = { t: 0, integral: 0, prevError: 0, plant: { x1: 0.3, x2: 0, y: 0.3 }, target: 0 };
+    setData([]);
+    setStatus("STANDBY");
+  };
+
+  const statusColor =
+    status.includes("UNSTABLE") ? PALETTE.warn :
+    status.includes("CORRECTING") ? PALETTE.accent :
+    status === "STANDBY" ? PALETTE.muted :
+    PALETTE.good;
+
+  const marginColor = margin > 0.5 ? PALETTE.good : margin > 0 ? PALETTE.warn : PALETTE.warn;
+
+  return (
+    <div style={{ background: PALETTE.bg, minHeight: "100vh", fontFamily: mono, color: PALETTE.text, padding: "24px 20px" }}>
+
+      {/* Header */}
+      <div style={{ borderBottom: `1px solid ${PALETTE.border}`, paddingBottom: 16, marginBottom: 24 }}>
+        <div style={{ fontSize: 11, color: PALETTE.muted, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>
+          Exo-Neural Resonator
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: PALETTE.accent, letterSpacing: 1 }}>
+          PID Stabilization Monitor
+        </div>
+        <div style={{ fontSize: 11, color: PALETTE.muted, marginTop: 4 }}>
+          Routh-Hurwitz Verified · bc − ad = {margin.toFixed(4)} · {margin > 0 ? "PASS ✓" : "FAIL ✗"}
+        </div>
+      </div>
+
+      {/* Status Bar */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr",
+        gap: 12, marginBottom: 24
+      }}>
+        {[
+          { label: "STATUS", value: status, color: statusColor },
+          { label: "STABILITY MARGIN", value: margin.toFixed(4), color: marginColor },
+          { label: "THRESHOLD τ", value: "0.18 (18%)", color: PALETTE.text },
+          { label: "DRIFT RATE λ", value: `${LAMBDA_DRIFT} evt/tok`, color: PALETTE.text },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{
+            background: PALETTE.panel, border: `1px solid ${PALETTE.border}`,
+            borderRadius: 6, padding: "12px 14px"
+          }}>
+            <div style={{ fontSize: 9, color: PALETTE.muted, letterSpacing: 2, marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 13, color, fontWeight: 700 }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <div style={{ background: PALETTE.panel, border: `1px solid ${PALETTE.border}`, borderRadius: 8, padding: "16px 8px", marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: PALETTE.muted, letterSpacing: 2, marginBottom: 12, paddingLeft: 8 }}>
+          REAL-TIME SIGNAL MONITOR
+        </div>
+        <LineChart width={680} height={220} data={data} margin={{ left: 0, right: 16 }}>
+          <CartesianGrid stroke={PALETTE.border} strokeDasharray="3 3" />
+          <XAxis dataKey="t" stroke={PALETTE.muted} tick={{ fontSize: 10 }} label={{ value: "t (s)", position: "insideRight", fill: PALETTE.muted, fontSize: 10 }} />
+          <YAxis stroke={PALETTE.muted} tick={{ fontSize: 10 }} domain={[-0.5, 1.5]} />
+          <Tooltip contentStyle={{ background: PALETTE.panel, border: `1px solid ${PALETTE.border}`, fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <ReferenceLine y={TAU} stroke={PALETTE.warn} strokeDasharray="4 2" label={{ value: "τ=0.18", fill: PALETTE.warn, fontSize: 10 }} />
+          <Line type="monotone" dataKey="error" stroke={PALETTE.accent} dot={false} strokeWidth={2} name="e(t) Error" isAnimationActive={false} />
+          <Line type="monotone" dataKey="gamma" stroke={PALETTE.good} dot={false} strokeWidth={2} name="Γ(t) Output" isAnimationActive={false} />
+          <Line type="monotone" dataKey="plant" stroke={PALETTE.warn} dot={false} strokeWidth={1.5} strokeDasharray="4 2" name="Plant State" isAnimationActive={false} />
+        </LineChart>
+      </div>
+
+      {/* PID Tuning */}
+      <div style={{ background: PALETTE.panel, border: `1px solid ${PALETTE.border}`, borderRadius: 8, padding: 16, marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: PALETTE.muted, letterSpacing: 2, marginBottom: 14 }}>PID GAIN TUNING</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+          {[
+            { key: "kp", label: "Kp — Proportional", min: 0.1, max: 2, step: 0.05 },
+            { key: "ki", label: "Ki — Integral", min: 0.01, max: 1, step: 0.01 },
+            { key: "kd", label: "Kd — Derivative", min: 0.05, max: 2, step: 0.05 },
+          ].map(({ key, label, min, max, step }) => (
+            <div key={key}>
+              <div style={{ fontSize: 10, color: PALETTE.muted, marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 18, color: PALETTE.accent, fontWeight: 700, marginBottom: 8 }}>{pid[key].toFixed(2)}</div>
+              <input type="range" min={min} max={max} step={step} value={pid[key]}
+                onChange={e => setPid(p => ({ ...p, [key]: parseFloat(e.target.value) }))}
+                style={{ width: "100%", accentColor: PALETTE.accent }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {[
+          { label: running ? "⏸ PAUSE" : "▶ RUN", onClick: () => setRunning(r => !r), color: running ? PALETTE.warn : PALETTE.good },
+          { label: "↺ RESET", onClick: () => { setRunning(false); reset(); }, color: PALETTE.muted },
+          {
+            label: disturbance ? "✕ CLEAR DISTURBANCE" : "⚡ INJECT DISTURBANCE",
+            onClick: () => setDisturbance(d => !d),
+            color: disturbance ? PALETTE.warn : PALETTE.accent
+          },
+          { label: "↩ RESTORE VERIFIED", onClick: () => { setPid({ kp: KP, ki: KI, kd: KD }); }, color: PALETTE.dim },
+        ].map(({ label, onClick, color }) => (
+          <button key={label} onClick={onClick} style={{
+            background: "transparent", border: `1px solid ${color}`,
+            color, fontFamily: mono, fontSize: 11, padding: "10px 16px",
+            borderRadius: 5, cursor: "pointer", letterSpacing: 1,
+            transition: "background 0.2s"
+          }}
+            onMouseEnter={e => e.target.style.background = color + "22"}
+            onMouseLeave={e => e.target.style.background = "transparent"}
+          >{label}</button>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div style={{ marginTop: 24, fontSize: 10, color: PALETTE.dim, borderTop: `1px solid ${PALETTE.border}`, paddingTop: 12 }}>
+        Plant: G(s) = {K_GAIN} / ((τ·s+1)(s−λ)) · τ_delay={TAU_DELAY}s · λ_drift={LAMBDA_DRIFT} evt/tok · K_gain={K_GAIN} · Margin verified bc−ad=0.729
+      </div>
+    </div>
+  );
+}
+______________________________________________________________________________________________________________________________________________
+
+Logs
+
+{"timestamp": 1781404422.0643327, "query": "--query why is the moon made of cheese?", "final_answer": "The idea that the moon is made of cheese likely originated from medieval Slavic folklore, where a wolf was tricked by a fox into believing the moon's reflection on water was edible cheese. When the wolf consumed it and swelled, this story may have contributed to the notion.\n\nLater, in 1546, John Heywood included \"the moon is made of a greene cheese\" in his Proverbs. Here, \"greene\" refers to new or fresh cheese, not moldy green cheese. This proverb further popularized the idea, though it was probably used more as a playful saying rather than something believed.\n\nThere's no evidence that anyone actually thought this was true; instead, these references suggest it was part of folklore and metaphorical expressions.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781457193.6268156, "query": "--query what was the third president of the US?", "final_answer": "The third President of the United States was Thomas Jefferson.\n\n**Answer:** Thomas Jefferson was the third President of the United States, serving from 1801 to 1809.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781529230.1789043, "query": "--query what is todays date", "final_answer": "Today's full date is **October 26, 2023**.\n\nYou can also express it numerically as **10/26/2023** or using ISO format: **2023-10-26**.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781529357.9091394, "query": "--query why are you saying 10/26/2023 when today is 6/15/2026?", "final_answer": "Based on the provided search results:\n\nThe term \"10/26/2023\" appears twice:\n1. As a date related to a comedy event (October 26, 2023).\n2. As part of the title or description for a DRI webinar scheduled for October 26-27, 2023.\n\nThere is no information in these search results about the current date being June 15, 2026.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781529520.0153365, "query": "--query note that you are using duckduckgo as a www search so you have outdated info as a HITL im confirming its 9:18 an 6/15/2026 rensselaer NY 12144 can you confirm?", "final_answer": "Based on the provided information, I cannot confirm your specific query about 9:18 AM on June 15, 2026, in Rensselaer NY 12144.\n\nThe text only discusses DuckDuckGo and Brave Search as search engines or browsers, not a \"www search\" feature. It doesn't provide details about specific dates, times, locations, or any HITL (Human-in-the-Loop) system for confirming information like you described.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781529675.8520708, "query": "--query why is the moon made of cheese?", "final_answer": "The idea that the moon is made of cheese likely originated from medieval Slavic folklore where it was part of a fable involving a wolf chasing a fox after mistaking the moon for floating cheese over water. This concept later appeared in written form through John Heywood's 1546 Proverbs, which included the phrase \"the moon is made of a greene cheese.\"", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781532427.7236955, "query": "--query do your eyes get stuck to the TV if you watch tv to closely?", "final_answer": "Based on the provided search results, eyes do NOT get physically stuck to a TV screen if you watch it too closely.\n\nThe text mentions potential problems with sitting too close (like needing an eye exam), and describes warning signs or ways to hide TVs (\"Barely There\" episode). However, there is no information suggesting that watching TV excessively causes physical adhesion of the eyes.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781576281.0732327, "query": "--query what is the difference between mettle and metal?", "final_answer": "Based on the provided search results:\n\nThe difference between \"mettle\" and \"metal\" is that **'metal' refers to a material**, while **'mettle' refers to courage or strength of character**.\n\n*   'Metal' is described as a substance that conducts electricity and can be melted (like iron, copper).\n*   'Mettle' is defined as the courage to carry on.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781578033.2633548, "query": "--query what is the difference between metal and mettle?", "final_answer": "**Metal:** A solid material that is typically hard, shiny, malleable, fusible, and ductile, with good electrical and thermal conductivity (e.g., iron, aluminum). It refers to physical substances used in engineering, construction, and various objects.\n\n**Mettle:** The quality of a person's character showing courage, strength of mind, or spirit; endurance. It describes an abstract concept related to personal resilience and fortitude.\n\nThe main difference is that **metal** refers to a tangible material (physical), while **mettle** refers to an intangible quality (abstract).", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781578417.7445846, "query": "--query why is the moon made of cheese?", "final_answer": "Based on the provided information:\n\nThe belief that the moon is made of cheese stems from a **fanciful or mischievous interpretation**.\n\n1.  **Origin:** It originates from medieval fables and was traced back in one source to 16th-century proverbs, likely involving simple misunderstandings.\n2.  **Appeal:** Its enduring appeal lies in its very nature as an absurd idea born from mistaking a reflection (like the moon seen in water) for something real.\n\nThere is no scientific basis for this belief; it's considered doubtful anyone truly believed it. The provided text does not mention the specific psychological concept (\"the moon is made of green cheese\" meaning the dream was nonsense), so that aspect cannot be confirmed from these sources alone.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781578785.505852, "query": "--querry why is the grass always greener on the other side?", "final_answer": "Based on the provided search results, here's an explanation:\n\nThe phrase \"the grass is always greener on the other side\" describes a common human tendency where individuals perceive conditions or situations in another place or circumstance as better than their own. This happens because we often focus on the positive aspects of others' lives while overlooking our own advantages and challenges.\n\nAs noted in one search result, this stems from not truly appreciating what we have (\"Thus describes the grass being greener... However we don't truly appreciate what the other person is going through\"). Another defines it as \"the belief that something else is better\" (June 29, 2023). The idiom captures how people compare their own situation unfavorably to others', often idealizing distant or unknown places (\"So the grass appearing greener means that conditions appear to be better in lesser known areas...\").", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781579472.2232938, "query": "--querry why is the moon made of cheese?", "final_answer": "The idea that the Moon is made of green cheese stems from a long-standing myth with roots in antiquity, though its origins are debated among historians. While some trace it back to medieval fables, others suggest earlier references in Greek and Roman literature. The concept gained prominence through 16th-century proverbs and was later popularized by modern adaptations such as children's books or songs like \"The Moon Is Green\" (also known as \"The Moon Was Made of Green Cheese\"). Despite its enduring presence in culture, the belief itself is likely unfounded; it may have been used metaphorically to explain celestial bodies or simply as a playful fable.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781579674.8053553, "query": "--querry why is the sky blue?", "final_answer": "The sky appears blue because of **Rayleigh scattering**. Sunlight consists of different wavelengths (colors), and when it enters Earth's atmosphere, shorter wavelengths like blue scatter more than longer ones.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781579841.8709257, "query": "--querry you told me why the sky was blue but how do you know why the sky is actually blue if you cant tell colors?", "final_answer": "Okay, let's break down why the sky appears blue based *only* on the information provided:\n\n1.  **Light Source:** Sunlight contains all the colors of the rainbow (white light).\n2.  **Atmospheric Interaction:** When sunlight enters Earth's atmosphere, it interacts with tiny molecules of air.\n3.  **Scattering Process:** This interaction causes a phenomenon called Rayleigh Scattering. Rayleigh Scattering preferentially scatters shorter wavelengths of light more effectively than longer wavelengths.\n4.  **Wavelengths Involved:** Shorter wavelengths correspond to blue and violet light.\n\n**Why it appears blue (not purple):**\n\n*   The scattering process makes the *blue* portion of sunlight scatter much more strongly than other colors, including violet.\n*   While Rayleigh Scattering would theoretically scatter violet light even more effectively if our eyes were sensitive only to violet, human vision is slightly less sensitive to violet compared to blue.\n\n**Why it's not black (or red):**\n\n*   The sky isn't black because sunlight illuminates the upper atmosphere and scatters its way down.\n*   It doesn't look purple or red primarily due to Rayleigh Scattering scattering away those shorter/longer wavelengths respectively, combined with our slightly reduced sensitivity to violet.\n\n**In short:** Even though you might not be able to distinguish certain pure blues perfectly (or perhaps your perception is different), the sky appears blue because sunlight itself has a stronger intensity in the blue part of its spectrum *before* entering the atmosphere. Furthermore, Rayleigh Scattering strongly scatters the blue light component from the sun's rays as they pass through our air molecules, making it dominant in the scattered light reaching us directly overhead during the day.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781580091.1677854, "query": "--query why is the sky blue and how can you make sure?", "final_answer": "The sky appears blue primarily due to **Rayleigh scattering**.\n\nHere's how it works based on the information provided:\n\n1.   **Scattering by Molecules:** The molecules in Earth's atmosphere (largely nitrogen and oxygen) scatter sunlight in all directions through a phenomenon called Rayleigh scattering.\n2.  **Wavelength Dependence:** Shorter wavelengths of light (like blue and violet) are scattered much more than longer wavelengths (like red or yellow).\n3.  **Sunlight Spectrum & Eye Sensitivity:** While both blue and violet light are scattered, our eyes are *more sensitive* to blue light than to violet light.\n4.  **Solar Emission:** Additionally, the sun emits more energy in the blue part of its spectrum compared to the violet end.\n\nTherefore, although violet light is also scattered significantly due to Rayleigh scattering (because it's a short wavelength), the combination of our eyes being less sensitive to violet and the sun emitting relatively more blue light means that **blue** appears stronger to us. This scattering occurs most effectively when sunlight passes through the atmosphere at an angle closer to overhead, especially during midday.\n\nTo ensure you see a blue sky, look towards the daytime sky (especially around noon) on a clear day with minimal haze or pollution.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+_______________________________________________________________________________________________________________________________________________________________________________________________________________________
