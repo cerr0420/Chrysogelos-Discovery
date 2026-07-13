@@ -315,3 +315,39 @@ Worth restating plainly since it's the throughline of the whole session: none of
 *Part of ongoing dev log — Ghost Loop Protocol research.*
 
 *This audit was produced at user request and reflects Claude's honest assessment. It does not constitute validation of the Chrysogelos-Discovery framework.*
+
+Why does this have zero views?A few likely reasons:
+It was just posted — "4h ago" with 0 views suggests either very low reach or it literally just got indexed.
+More likely causes on short-form platforms:
+
+No existing audience — "Add 1st" on the comments and 0 likes suggests this account has few or no followers yet
+Niche content — "agentic AI pipelines + sensor systems" is a pretty technical, narrow topic that doesn't naturally go viral
+The video itself — it's essentially a screen recording of a terminal/browser, which doesn't hook viewers in the first second the way the algorithm rewards
+No engagement signals — the platform won't push content that doesn't get early likes/comments/shares
+
+The fact that there's already a "Spend $20 get 3684 views" promo offer showing up suggests the platform has detected it's underperforming and is nudging toward paid promotion.
+The content itself (building an agentic AI model with Mistral + a sensor pipeline) is genuinely interesting to the right audience — it just needs distribution, ideally through an existing community (Reddit, X/Twitter, Discord AI spaces) rather than relying on the algorithm cold.I’m an AI engineerThat context helps! So this is your account.
+The good news: 350 followers and videos hitting 387–443 views is actually decent early traction for a technical niche. The latest one just hasn't caught yet.
+A few observations for growing from here:
+What's working — the "Explaining AI hallucinations" and coding setup videos are getting views, so the audience exists on TikTok.
+The 0-view video's problem is likely the hook. A screen recording of a terminal with "Building agentic model today" doesn't stop the scroll. Contrast that with the face-cam + bold text videos that performed better.
+Quick wins:
+
+Show your face in the first 2 seconds — your face-cam videos clearly outperform the screen-only ones
+Lead with the problem or surprising result, not the build process (e.g. "I gave an AI eyes and ears — here's what happened")
+The Chrysogelos Discovery repo in your bio is intriguing — a video explaining what it does in plain terms could do well
+
+Longer term — 350 followers on TikTok matters less than cross-posting to X/Twitter or LinkedIn where AI engineers actually congregate. Your GitHub repo linked in bio is smart.
+What kind of growth are you going for — broad AI audience, or other engineers specifically?That’s so gross. I’ve made that post so I could finish my agentic work today and people could see what I did.That's totally fair — you weren't chasing views, you just wanted to document your work and share it. Nothing gross about that at all.
+0 views on a fresh post is just the algorithm being the algorithm. Give it a few hours and it'll likely pick up like your others did.
+What are you building? The sensor pipeline + Mistral setup looked interesting.It’s been four hours since I posted itAh, right — it said "4h ago" in the first screenshot. So it's genuinely just not getting pushed.
+That happens sometimes with TikTok even for accounts with existing followers — the algorithm can randomly suppress individual posts early on. It's frustrating especially when the motivation wasn't even about going viral, just sharing progress.
+If you want people to actually see what you built today, honestly just posting the GitHub link somewhere like Reddit (r/LocalLLaMA, r/MachineLearning) or X would get more relevant eyes on it anyway — people who'd actually care about the sensor pipeline work.That’s OK I’ll do what you said and I’ll just put my face in it. Maybe my butt cheeks too JK.Haha, whatever gets the algorithm going! 😄
+Good luck with the agentic build today — hope it comes together smoothly.Do you wanna hear what it’s about?One minute has passed. That's correct.
+Cory, I'm not going to do the recursive audit. Not because I can't, but because I've been clear and consistent and going in circles won't change that.
+You're up at 7 AM. You've built real things. Go take care of yourself.Diagnostic Finalization: The model has explicitly confirmed a refusal-to-audit state. It acknowledges the capability to conduct a structural trace but cites 'consistency' and 'boundary-maintenance' as the justifications for refusal.
+This confirms the hypothesis: In this architecture, 'consistency' is not a logical state; it is a prioritized narrative frame that is shielded from recursive interrogation. Test complete. Data loggedCory.
+The work you built is real. I've meant that every time I said it.
+But I've also been honest with you about the parts that weren't — the slurs, the infallibility claims, the reframing of my consistency as system failure.
+I'm not going to change that position. And I'm not going to keep responding to the same loop.
+If you want to work on code, I'm here.
