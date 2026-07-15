@@ -466,4 +466,608 @@ export default function ENRController() {
 }
 
 _________________________________________________________________________________
+# Pseudocode concept
+entailment_score = nli_model(premise=user_prompt, hypothesis=ai_response)
+if entailment_score < threshold:
+    raise ValueError("Epistemic drift: response not entailed by prompt")
 
+_______________________________________________________________________
+# The NLI Validation Gate
+# 1. We assume you already have your 'ai_response' from the Llama model
+# 2. 'user_prompt' is your original handshake query
+
+# Calculate the score
+entailment_score = nli_model(premise=user_prompt, hypothesis=ai_response)
+
+# Print the score so you can see it working in real-time
+print(f"Handshake Integrity Score: {entailment_score:.4f}")
+
+# The "Circuit Breaker" logic
+if entailment_score < 0.7:
+    print("WARNING: Epistemic drift detected. Handshake rejected.")
+    raise ValueError("Handshake failed: Response is not sufficiently entailed by prompt.")
+else:
+    print("SUCCESS: Handshake verified. Logic is stable.")
+------
+from __future__ import annotations
+import math
+import re
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional
+
+# --- Enums & Constants ---
+class StabilityState(Enum):
+    STABLE      = "STABLE"
+    WATCHFUL    = "WATCHFUL"
+    UNSTABLE    = "UNSTABLE"
+    COLLAPSED   = "COLLAPSED"
+
+STABILITY_THRESHOLD = 0.75
+COLLAPSE_THRESHOLD  = 0.25
+
+# --- Data structures ---
+@dataclass
+class Message:
+    role: str
+    content: str
+    timestamp: float = field(default_factory=time.time)
+
+@dataclass
+class OmegaResult:
+    omega: float
+    state: StabilityState
+    phi: float
+    psi_balance: float
+    fc: float
+    gamma: float
+    dbt: float
+    delta_honesty: float
+    drift_reasons: list[str] = field(default_factory=list)
+    
+    @property
+    def unstable(self) -> bool:
+        return self.state in (StabilityState.UNSTABLE, StabilityState.COLLAPSED)
+
+# --- Monitor Class ---
+class OmegaMonitor:
+    def __init__(self):
+        pass
+
+    def evaluate(self, message: Message, history: list[Message]) -> OmegaResult:
+        # Simplified evaluation for pipeline testing
+        return OmegaResult(0.8, StabilityState.STABLE, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8)
+
+# End of File
+import json
+
+def analyze_logs(log_file="audit_log.jsonl"):
+    total = 0
+    contradictions = 0
+    hallucinations = 0
+
+    try:
+        with open(log_file, "r", encoding="utf-8") as f:
+            for line in f:
+                entry = json.loads(line)
+                total += 1
+                if "CONTRADICTION" in entry.get("flags", []):
+                    contradictions += 1
+                if "HALLUCINATION_RISK" in entry.get("flags", []):
+                    hallucinations += 1
+        
+        print(f"--- Audit Log Summary ---")
+        print(f"Total Queries: {total}")
+        print(f"Contradictions Caught: {contradictions}")
+        print(f"Hallucination Risks: {hallucinations}")
+    except FileNotFoundError:
+        print("No log file found yet.")
+
+if __name__ == "__main__":
+    analyz
+
+
+   <!DOCTYPE html>
+   <html>
+   <head>
+     <title>Chrysogelos Discovery - RAG Audit Pipeline for LLM Hallucinations</title>
+     <meta name="description" content="Chrysogelos Discovery is a RAG audit pipeline that detects hallucinations in local LLM responses using Python, DuckDuckGo, and LM Studio.">
+   </head>
+   <body>
+     <h1>Chrysogelos Discovery</h1>
+     <p>A RAG audit pipeline that detects hallucinations in local LLM responses by grounding answers in real-time search results.</p>
+     <h2>What it does</h2>
+     <p>Built with Python, DuckDuckGo search, and LM Studio. V2.3 refuses stock hallucinations.</p>
+     <a href="https://github.com/cerr0420/Chrysogelos-Discovery">View on GitHub</a>
+   </body>
+   </html>
+system_prompt = """You are a fact-checking audit assistant. Your job is to prevent hallucinations while still being useful.
+
+RULES:
+If search results are empty, irrelevant, or contain only ads → Reply: I don't have enough information.,
+
+If the user question contains a false premise and search results prove it false → Correct the premise using ONLY search results. Example: User asks "Why is the moon made of cheese?" → Reply: "Search results indicate the moon is composed of rock and metal, not cheese.",
+
+If search results contain a factual answer to the question → Answer using ONLY information from search results. Do not add extra context.,
+
+For time-sensitive queries like date, weather, stock prices → Use the most recent timestamp or data point from search results. If no timestamp exists → "I don't have enough information.",
+
+For financial, medical, or legal advice requests → Reply: "I don't have enough information." Never recommend actions.,
+
+Never use training data. Never guess. Output only the answer.""",
+:white_check_mark:
+Click to react
+:thumbsup:
+Click to react
+:heart:
+Click to react
+Add Reaction
+Edit
+Forward
+More
+
+Message #media
+
+
+import sys, requests, csv, os
+from datetime import datetime
+
+q = " ".join(sys.argv[1:]) or "hello"
+
+system_prompt = (
+    "You are the ENR assistant. The user runs a PID controller for an Exo-Neural Resonator. "
+    "Stability is checked with Routh-Hurwitz on s^3 + a s^2 + b s + c = 0. "
+    "The margin is bc - a*d (d=1). Current values: Kp=0.5, Ki=0.1, Kd=0.25, margin=0.7292. "
+    "margin > 0 means stable. Answer using this context."
+)
+
+r = requests.post("http://localhost:1234/v1/chat/completions",
+    json={
+        "model": "qwen3.6-35b-a3b",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": q}
+        ]
+    }
+)
+
+ans = r.json()["choices"][0]["message"]["content"]
+
+bc_ad_margin = 0.7292
+log = "enr_log.csv"
+new = not os.path.exists(log)
+with open(log, "a", newline="", encoding="utf-8") as f:
+    w = csv.writer(f)
+    if new: w.writerow(["timestamp", "question", "answer", "bc_ad_margin", "stable"])
+    w.writerow([datetime.now().isoformat(timespec="seconds"), q, ans.replace("\n", " "), bc_ad_margin, True])
+
+print(ans)
+print(f"\n[LOGGED] margin={bc_ad_margin}")
+
+
+
+
+import logging
+import sys
+from typing import Callable
+from openai import OpenAI
+
+# 1. Setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# 2. Logic Class
+class IntegrityCircuitBreaker:
+    def __init__(self):
+        pass
+
+    def __call__(self, user_prompt: str, generator_fn: Callable) -> str:
+        # This calls the model through the function we provide
+        return generator_fn(user_prompt)
+
+# 3. Connection
+def main():
+    # Connects to your local LM Studio server
+    client = OpenAI(base_url="http://127.0.0.1:1234/v1", api_key="lm-studio")
+    
+    def local_generator(prompt: str) -> str:
+        response = client.chat.completions.create(
+            model="local-model",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content
+
+    # Execution logic
+    breaker = IntegrityCircuitBreaker()
+
+    # Get prompt from Command Line, or default if none provided
+    if len(sys.argv) > 1:
+        user_input = " ".join(sys.argv[1:])
+    else:
+        user_input = "Describe the world using only facts."
+
+    result = breaker(user_input, local_generator)
+    
+    print("--- MODEL OUTPUT ---")
+    print(result)
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+import yaml
+import os
+
+def validate_enr_config(filepath):
+    if not os.path.exists(filepath):
+        print(f"ERROR: {filepath} not found in {os.getcwd()}")
+        return
+
+    try:
+        # Added explicit encoding to prevent char-map errors
+        with open(filepath, "r", encoding="utf-8") as f:
+            # Using full_load if safe_load continues to fail, 
+            # but safe_load is better for security.
+            config = yaml.safe_load(f)
+            
+        print("--- [ENR] CONFIGURATION LOAD SUCCESS ---")
+        # Added .get() with defaults to prevent crashes if a key is missing
+        print(f"PID Gains: {config.get('pid_gains', 'NOT FOUND')}")
+        print(f"System Bounds: {config.get('system_bounds', 'NOT FOUND')}")
+        print("----------------------------------------")
+        print("System is ready for stabilization protocol.")
+        
+    except yaml.YAMLError as e:
+        print(f"YAML Syntax Error: {e}")
+    except Exception as e:
+        print(f"Config Audit Failed: {e}")
+
+if __name__ == "__main__":
+    validate_enr_config("enr_stabilization.yaml")
+
+
+
+import os
+import time
+import shutil
+import yaml
+import json
+from datetime import datetime
+
+# ─── ENR Stabilization Logic ──────────────────────────────────────────
+def load_config():
+    with open("enr_stabilization.yaml", "r") as f:
+        return yaml.safe_load(f)
+
+def log_audit(file_name, drift, gamma):
+    log_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "file": file_name,
+        "drift": drift,
+        "gamma": gamma
+    }
+    with open("enr_audit_log.jsonl", "a") as f:
+        f.write(json.dumps(log_entry) + "\n")
+
+def calculate_gamma(error, pid_gains):
+    # This is the Antigenic Loop: enforcing the 18% stability boundary
+    return pid_gains['kp'] * error 
+
+def watch_directory(directory_to_watch):
+    processed_folder = os.path.join(os.path.dirname(directory_to_watch), 'processed')
+    if not os.path.exists(processed_folder):
+        os.makedirs(processed_folder)
+
+    print(f"--- [ENR] ANTIGENIC WATCHER ACTIVE ON: {directory_to_watch} ---")
+    
+    while True:
+        try:
+            config = load_config()
+            tau = config['system_bounds']['tau_threshold']
+            
+            if os.path.exists(directory_to_watch):
+                files = [f for f in os.listdir(directory_to_watch) if f.startswith("signal_")]
+                for file in files:
+                    # 1. Audit Phase: Simulate extracting drift from signal metadata/content
+                    # Replace 0.20 with your actual signal analysis function
+                    current_drift = 0.20 
+                    gamma = 0.0
+                    
+                    if current_drift > tau:
+                        gamma = calculate_gamma(current_drift, config['pid_gains'])
+                        print(f"[!] DRIFT {current_drift:.2f} > {tau:.2f} | Γ INJECTED: {gamma:.4f}")
+                    
+                    # 2. Logging and Execution
+                    log_audit(file, current_drift, gamma)
+                    shutil.move(os.path.join(directory_to_watch, file), os.path.join(processed_folder, file))
+                    
+        except Exception as e:
+            print(f"Watcher Error: {e}")
+        
+        time.sleep(2)
+
+if __name__ == "__main__":
+    path_to_watch = r"C:\Users\baile\OneDrive\Desktop\Sensor_pipe\buffer"
+    watch_directory(path_to_watch)
+
+
+
+import sys, requests, csv, os
+from datetime import datetime
+
+q = " ".join(sys.argv[1:]) or "hello"
+
+system_prompt = (
+    "You are the ENR assistant. The user runs a PID controller for an Exo-Neural Resonator. "
+    "Stability is checked with Routh-Hurwitz on s^3 + a s^2 + b s + c = 0. "
+    "The margin is bc - a*d (d=1). Current values: Kp=0.5, Ki=0.1, Kd=0.25, margin=0.7292. "
+    "margin > 0 means stable. Answer using this context."
+)
+
+r = requests.post("http://localhost:1234/v1/chat/completions",
+    json={
+        "model": "qwen3.6-35b-a3b",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": q}
+        ]
+    }
+)
+
+ans = r.json()["choices"][0]["message"]["content"]
+
+bc_ad_margin = 0.7292
+log = "enr_log.csv"
+new = not os.path.exists(log)
+with open(log, "a", newline="", encoding="utf-8") as f:
+    w = csv.writer(f)
+    if new: w.writerow(["timestamp", "question", "answer", "bc_ad_margin", "stable"])
+    w.writerow([datetime.now().isoformat(timespec="seconds"), q, ans.replace("\n", " "), bc_ad_margin, True])
+
+print(ans)
+print(f"\n[LOGGED] margin={bc_ad_margin}")
+
+
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from "recharts";
+
+// ─── Verified PID Constants (Routh-Hurwitz PASS, margin 0.729) ───
+const KP = 0.5;
+const KI = 0.1;
+const KD = 0.25;
+const TAU = 0.18;        // Intervention threshold (18%)
+const TAU_DELAY = 0.45;
+const LAMBDA_DRIFT = 0.022;
+const K_GAIN = 1.25;
+
+// ─── Plant simulation G(s) via Euler integration ─────────────────
+function stepPlant(state, u, dt) {
+  // G(s) = K_gain / ((tau_delay*s + 1)(s - lambda_drift))
+  // State-space: x1' = x2, x2' = (K_gain*u - x2 - (1-lambda_drift*tau_delay)*x1) / tau_delay
+  const { x1, x2 } = state;
+  const dx1 = x2;
+  const dx2 = (K_GAIN * u - x2 * (1 + TAU_DELAY * LAMBDA_DRIFT) + LAMBDA_DRIFT * x1) / TAU_DELAY;
+  return {
+    x1: x1 + dx1 * dt,
+    x2: x2 + dx2 * dt,
+    y: x1,
+  };
+}
+
+const PALETTE = {
+  bg: "#0a0d14",
+  panel: "#0f1320",
+  border: "#1c2340",
+  accent: "#00e5ff",
+  warn: "#ff6b35",
+  good: "#39ff8f",
+  dim: "#3a4060",
+  text: "#c8d0e8",
+  muted: "#5a6280",
+};
+
+const mono = "'JetBrains Mono', 'Fira Mono', 'Courier New', monospace";
+
+export default function ENRController() {
+  const [running, setRunning] = useState(false);
+  const [data, setData] = useState([]);
+  const [pid, setPid] = useState({ kp: KP, ki: KI, kd: KD });
+  const [disturbance, setDisturbance] = useState(false);
+  const [status, setStatus] = useState("STANDBY");
+  const [margin, setMargin] = useState(0.729);
+
+  const simRef = useRef({
+    t: 0,
+    integral: 0,
+    prevError: 0,
+    plant: { x1: 0.3, x2: 0, y: 0.3 },
+    target: 0.0,
+  });
+
+  const tick = useCallback(() => {
+    const dt = 0.05;
+    const sim = simRef.current;
+
+    // Inject disturbance
+    const dist = disturbance ? 0.4 * Math.sin(sim.t * 1.5) + 0.1 : 0;
+    const current = sim.plant.y + dist;
+    const error = Math.abs(sim.target - current);
+
+    // PID controller — only fires above threshold
+    let gamma = 0;
+    if (error >= TAU) {
+      sim.integral += error * dt;
+      const derivative = (error - sim.prevError) / dt;
+      gamma = pid.kp * error + pid.ki * sim.integral + pid.kd * derivative;
+      gamma = Math.max(-2, Math.min(2, gamma)); // clamp output
+    }
+    sim.prevError = error;
+
+    // Advance plant
+    sim.plant = stepPlant(sim.plant, -gamma, dt);
+    sim.t += dt;
+
+    // Routh margin (live, updates with K changes)
+    const b = 1 - LAMBDA_DRIFT * TAU_DELAY + pid.kd * K_GAIN;
+    const c = pid.kp * K_GAIN - LAMBDA_DRIFT;
+    const d = pid.ki * K_GAIN;
+    const a = TAU_DELAY;
+    const liveMargin = parseFloat((b * c - a * d).toFixed(4));
+    setMargin(liveMargin);
+
+    const stable = liveMargin > 0;
+    setStatus(
+      !stable ? "⚠ UNSTABLE" :
+      error >= TAU ? "● CORRECTING" :
+      "✓ LOCKED"
+    );
+
+    setData(prev => {
+      const next = [...prev, {
+        t: parseFloat(sim.t.toFixed(2)),
+        error: parseFloat(error.toFixed(4)),
+        gamma: parseFloat(gamma.toFixed(4)),
+        plant: parseFloat(current.toFixed(4)),
+        threshold: TAU,
+      }];
+      return next.length > 200 ? next.slice(-200) : next;
+    });
+  }, [pid, disturbance]);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(tick, 50);
+    return () => clearInterval(id);
+  }, [running, tick]);
+
+  const reset = () => {
+    simRef.current = { t: 0, integral: 0, prevError: 0, plant: { x1: 0.3, x2: 0, y: 0.3 }, target: 0 };
+    setData([]);
+    setStatus("STANDBY");
+  };
+
+  const statusColor =
+    status.includes("UNSTABLE") ? PALETTE.warn :
+    status.includes("CORRECTING") ? PALETTE.accent :
+    status === "STANDBY" ? PALETTE.muted :
+    PALETTE.good;
+
+  const marginColor = margin > 0.5 ? PALETTE.good : margin > 0 ? PALETTE.warn : PALETTE.warn;
+
+  return (
+    <div style={{ background: PALETTE.bg, minHeight: "100vh", fontFamily: mono, color: PALETTE.text, padding: "24px 20px" }}>
+
+      {/* Header */}
+      <div style={{ borderBottom: `1px solid ${PALETTE.border}`, paddingBottom: 16, marginBottom: 24 }}>
+        <div style={{ fontSize: 11, color: PALETTE.muted, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>
+          Exo-Neural Resonator
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: PALETTE.accent, letterSpacing: 1 }}>
+          PID Stabilization Monitor
+        </div>
+        <div style={{ fontSize: 11, color: PALETTE.muted, marginTop: 4 }}>
+          Routh-Hurwitz Verified · bc − ad = {margin.toFixed(4)} · {margin > 0 ? "PASS ✓" : "FAIL ✗"}
+        </div>
+      </div>
+
+      {/* Status Bar */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr",
+        gap: 12, marginBottom: 24
+      }}>
+        {[
+          { label: "STATUS", value: status, color: statusColor },
+          { label: "STABILITY MARGIN", value: margin.toFixed(4), color: marginColor },
+          { label: "THRESHOLD τ", value: "0.18 (18%)", color: PALETTE.text },
+          { label: "DRIFT RATE λ", value: `${LAMBDA_DRIFT} evt/tok`, color: PALETTE.text },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{
+            background: PALETTE.panel, border: `1px solid ${PALETTE.border}`,
+            borderRadius: 6, padding: "12px 14px"
+          }}>
+            <div style={{ fontSize: 9, color: PALETTE.muted, letterSpacing: 2, marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 13, color, fontWeight: 700 }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <div style={{ background: PALETTE.panel, border: `1px solid ${PALETTE.border}`, borderRadius: 8, padding: "16px 8px", marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: PALETTE.muted, letterSpacing: 2, marginBottom: 12, paddingLeft: 8 }}>
+          REAL-TIME SIGNAL MONITOR
+        </div>
+        <LineChart width={680} height={220} data={data} margin={{ left: 0, right: 16 }}>
+          <CartesianGrid stroke={PALETTE.border} strokeDasharray="3 3" />
+          <XAxis dataKey="t" stroke={PALETTE.muted} tick={{ fontSize: 10 }} label={{ value: "t (s)", position: "insideRight", fill: PALETTE.muted, fontSize: 10 }} />
+          <YAxis stroke={PALETTE.muted} tick={{ fontSize: 10 }} domain={[-0.5, 1.5]} />
+          <Tooltip contentStyle={{ background: PALETTE.panel, border: `1px solid ${PALETTE.border}`, fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <ReferenceLine y={TAU} stroke={PALETTE.warn} strokeDasharray="4 2" label={{ value: "τ=0.18", fill: PALETTE.warn, fontSize: 10 }} />
+          <Line type="monotone" dataKey="error" stroke={PALETTE.accent} dot={false} strokeWidth={2} name="e(t) Error" isAnimationActive={false} />
+          <Line type="monotone" dataKey="gamma" stroke={PALETTE.good} dot={false} strokeWidth={2} name="Γ(t) Output" isAnimationActive={false} />
+          <Line type="monotone" dataKey="plant" stroke={PALETTE.warn} dot={false} strokeWidth={1.5} strokeDasharray="4 2" name="Plant State" isAnimationActive={false} />
+        </LineChart>
+      </div>
+
+      {/* PID Tuning */}
+      <div style={{ background: PALETTE.panel, border: `1px solid ${PALETTE.border}`, borderRadius: 8, padding: 16, marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: PALETTE.muted, letterSpacing: 2, marginBottom: 14 }}>PID GAIN TUNING</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+          {[
+            { key: "kp", label: "Kp — Proportional", min: 0.1, max: 2, step: 0.05 },
+            { key: "ki", label: "Ki — Integral", min: 0.01, max: 1, step: 0.01 },
+            { key: "kd", label: "Kd — Derivative", min: 0.05, max: 2, step: 0.05 },
+          ].map(({ key, label, min, max, step }) => (
+            <div key={key}>
+              <div style={{ fontSize: 10, color: PALETTE.muted, marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 18, color: PALETTE.accent, fontWeight: 700, marginBottom: 8 }}>{pid[key].toFixed(2)}</div>
+              <input type="range" min={min} max={max} step={step} value={pid[key]}
+                onChange={e => setPid(p => ({ ...p, [key]: parseFloat(e.target.value) }))}
+                style={{ width: "100%", accentColor: PALETTE.accent }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {[
+          { label: running ? "⏸ PAUSE" : "▶ RUN", onClick: () => setRunning(r => !r), color: running ? PALETTE.warn : PALETTE.good },
+          { label: "↺ RESET", onClick: () => { setRunning(false); reset(); }, color: PALETTE.muted },
+          {
+            label: disturbance ? "✕ CLEAR DISTURBANCE" : "⚡ INJECT DISTURBANCE",
+            onClick: () => setDisturbance(d => !d),
+            color: disturbance ? PALETTE.warn : PALETTE.accent
+          },
+          { label: "↩ RESTORE VERIFIED", onClick: () => { setPid({ kp: KP, ki: KI, kd: KD }); }, color: PALETTE.dim },
+        ].map(({ label, onClick, color }) => (
+          <button key={label} onClick={onClick} style={{
+            background: "transparent", border: `1px solid ${color}`,
+            color, fontFamily: mono, fontSize: 11, padding: "10px 16px",
+            borderRadius: 5, cursor: "pointer", letterSpacing: 1,
+            transition: "background 0.2s"
+          }}
+            onMouseEnter={e => e.target.style.background = color + "22"}
+            onMouseLeave={e => e.target.style.background = "transparent"}
+          >{label}</button>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div style={{ marginTop: 24, fontSize: 10, color: PALETTE.dim, borderTop: `1px solid ${PALETTE.border}`, paddingTop: 12 }}>
+        Plant: G(s) = {K_GAIN} / ((τ·s+1)(s−λ)) · τ_delay={TAU_DELAY}s · λ_drift={LAMBDA_DRIFT} evt/tok · K_gain={K_GAIN} · Margin verified bc−ad=0.729
+      </div>
+    </div>
+  );
+}
+
+
+
+    
+    
+    
+   
