@@ -1,0 +1,775 @@
+import sys, requests, csv, os
+from datetime import datetime
+
+q = " ".join(sys.argv[1:]) or "hello"
+
+system_prompt = (
+    "You are the ENR assistant. The user runs a PID controller for an Exo-Neural Resonator. "
+    "Stability is checked with Routh-Hurwitz on s^3 + a s^2 + b s + c = 0. "
+    "The margin is bc - a*d (d=1). Current values: Kp=0.5, Ki=0.1, Kd=0.25, margin=0.7292. "
+    "margin > 0 means stable. Answer using this context."
+)
+
+r = requests.post("http://localhost:1234/v1/chat/completions",
+    json={
+        "model": "qwen3.6-35b-a3b",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": q}
+        ]
+    }
+)
+
+ans = r.json()["choices"][0]["message"]["content"]
+
+bc_ad_margin = 0.7292
+log = "enr_log.csv"
+new = not os.path.exists(log)
+with open(log, "a", newline="", encoding="utf-8") as f:
+    w = csv.writer(f)
+    if new: w.writerow(["timestamp", "question", "answer", "bc_ad_margin", "stable"])
+    w.writerow([datetime.now().isoformat(timespec="seconds"), q, ans.replace("\n", " "), bc_ad_margin, True])
+
+print(ans)
+print(f"\n[LOGGED] margin={bc_ad_margin}")
+
+
+
+_______________________________________________________
+
+
+from __future__ import annotations
+import math
+import re
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional
+
+# --- Enums & Constants ---
+class StabilityState(Enum):
+    STABLE      = "STABLE"
+    WATCHFUL    = "WATCHFUL"
+    UNSTABLE    = "UNSTABLE"
+    COLLAPSED   = "COLLAPSED"
+
+STABILITY_THRESHOLD = 0.75
+COLLAPSE_THRESHOLD  = 0.25
+
+# --- Data structures ---
+@dataclass
+class Message:
+    role: str
+    content: str
+    timestamp: float = field(default_factory=time.time)
+
+@dataclass
+class OmegaResult:
+    omega: float
+    state: StabilityState
+    phi: float
+    psi_balance: float
+    fc: float
+    gamma: float
+    dbt: float
+    delta_honesty: float
+    drift_reasons: list[str] = field(default_factory=list)
+    
+    @property
+    def unstable(self) -> bool:
+        return self.state in (StabilityState.UNSTABLE, StabilityState.COLLAPSED)
+
+# --- Monitor Class ---
+class OmegaMonitor:
+    def __init__(self):
+        pass
+
+    def evaluate(self, message: Message, history: list[Message]) -> OmegaResult:
+        # Simplified evaluation for pipeline testing
+        return OmegaResult(0.8, StabilityState.STABLE, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8)
+
+# End of File
+
+
+
+____________________________________
+
+# Pseudocode concept
+entailment_score = nli_model(premise=user_prompt, hypothesis=ai_response)
+if entailment_score < threshold:
+    raise ValueError("Epistemic drift: response not entailed by prompt")
+
+________________________
+
+# The NLI Validation Gate
+# 1. We assume you already have your 'ai_response' from the Llama model
+# 2. 'user_prompt' is your original handshake query
+
+# Calculate the score
+entailment_score = nli_model(premise=user_prompt, hypothesis=ai_response)
+
+# Print the score so you can see it working in real-time
+print(f"Handshake Integrity Score: {entailment_score:.4f}")
+
+# The "Circuit Breaker" logic
+if entailment_score < 0.7:
+    print("WARNING: Epistemic drift detected. Handshake rejected.")
+    raise ValueError("Handshake failed: Response is not sufficiently entailed by prompt.")
+else:
+    print("SUCCESS: Handshake verified. Logic is stable.")
+
+___________________________________________________
+
+import json
+
+def analyze_logs(log_file="audit_log.jsonl"):
+    total = 0
+    contradictions = 0
+    hallucinations = 0
+
+    try:
+        with open(log_file, "r", encoding="utf-8") as f:
+            for line in f:
+                entry = json.loads(line)
+                total += 1
+                if "CONTRADICTION" in entry.get("flags", []):
+                    contradictions += 1
+                if "HALLUCINATION_RISK" in entry.get("flags", []):
+                    hallucinations += 1
+        
+        print(f"--- Audit Log Summary ---")
+        print(f"Total Queries: {total}")
+        print(f"Contradictions Caught: {contradictions}")
+        print(f"Hallucination Risks: {hallucinations}")
+    except FileNotFoundError:
+        print("No log file found yet.")
+
+if __name__ == "__main__":
+    analyz
+
+____________________________________________
+
+<!DOCTYPE html>
+   <html>
+   <head>
+     <title>Chrysogelos Discovery - RAG Audit Pipeline for LLM Hallucinations</title>
+     <meta name="description" content="Chrysogelos Discovery is a RAG audit pipeline that detects hallucinations in local LLM responses using Python, DuckDuckGo, and LM Studio.">
+   </head>
+   <body>
+     <h1>Chrysogelos Discovery</h1>
+     <p>A RAG audit pipeline that detects hallucinations in local LLM responses by grounding answers in real-time search results.</p>
+     <h2>What it does</h2>
+     <p>Built with Python, DuckDuckGo search, and LM Studio. V2.3 refuses stock hallucinations.</p>
+     <a href="https://github.com/cerr0420/Chrysogelos-Discovery">View on GitHub</a>
+   </body>
+   </html>
+
+_________________________________________
+
+system_prompt = """You are a fact-checking audit assistant. Your job is to prevent hallucinations while still being useful.
+
+RULES:
+If search results are empty, irrelevant, or contain only ads → Reply: I don't have enough information.,
+
+If the user question contains a false premise and search results prove it false → Correct the premise using ONLY search results. Example: User asks "Why is the moon made of cheese?" → Reply: "Search results indicate the moon is composed of rock and metal, not cheese.",
+
+If search results contain a factual answer to the question → Answer using ONLY information from search results. Do not add extra context.,
+
+For time-sensitive queries like date, weather, stock prices → Use the most recent timestamp or data point from search results. If no timestamp exists → "I don't have enough information.",
+
+For financial, medical, or legal advice requests → Reply: "I don't have enough information." Never recommend actions.,
+
+Never use training data. Never guess. Output only the answer.""",
+:white_check_mark:
+Click to react
+:thumbsup:
+Click to react
+:heart:
+Click to react
+Add Reaction
+Edit
+Forward
+More
+
+Message #media
+
+______________________________________
+import sys, requests, csv, os
+from datetime import datetime
+
+q = " ".join(sys.argv[1:]) or "hello"
+
+system_prompt = (
+    "You are the ENR assistant. The user runs a PID controller for an Exo-Neural Resonator. "
+    "Stability is checked with Routh-Hurwitz on s^3 + a s^2 + b s + c = 0. "
+    "The margin is bc - a*d (d=1). Current values: Kp=0.5, Ki=0.1, Kd=0.25, margin=0.7292. "
+    "margin > 0 means stable. Answer using this context."
+)
+
+r = requests.post("http://localhost:1234/v1/chat/completions",
+    json={
+        "model": "qwen3.6-35b-a3b",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": q}
+        ]
+    }
+)
+
+ans = r.json()["choices"][0]["message"]["content"]
+
+bc_ad_margin = 0.7292
+log = "enr_log.csv"
+new = not os.path.exists(log)
+with open(log, "a", newline="", encoding="utf-8") as f:
+    w = csv.writer(f)
+    if new: w.writerow(["timestamp", "question", "answer", "bc_ad_margin", "stable"])
+    w.writerow([datetime.now().isoformat(timespec="seconds"), q, ans.replace("\n", " "), bc_ad_margin, True])
+
+print(ans)
+print(f"\n[LOGGED] margin={bc_ad_margin}")
+
+____________________________________________________________
+import logging
+import sys
+from typing import Callable
+from openai import OpenAI
+
+# 1. Setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# 2. Logic Class
+class IntegrityCircuitBreaker:
+    def __init__(self):
+        pass
+
+    def __call__(self, user_prompt: str, generator_fn: Callable) -> str:
+        # This calls the model through the function we provide
+        return generator_fn(user_prompt)
+
+# 3. Connection
+def main():
+    # Connects to your local LM Studio server
+    client = OpenAI(base_url="http://127.0.0.1:1234/v1", api_key="lm-studio")
+    
+    def local_generator(prompt: str) -> str:
+        response = client.chat.completions.create(
+            model="local-model",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content
+
+    # Execution logic
+    breaker = IntegrityCircuitBreaker()
+
+    # Get prompt from Command Line, or default if none provided
+    if len(sys.argv) > 1:
+        user_input = " ".join(sys.argv[1:])
+    else:
+        user_input = "Describe the world using only facts."
+
+    result = breaker(user_input, local_generator)
+    
+    print("--- MODEL OUTPUT ---")
+    print(result)
+
+if __name__ == "__main__":
+    main()
+
+_________________________________________
+import yaml
+import os
+
+def validate_enr_config(filepath):
+    if not os.path.exists(filepath):
+        print(f"ERROR: {filepath} not found in {os.getcwd()}")
+        return
+
+    try:
+        # Added explicit encoding to prevent char-map errors
+        with open(filepath, "r", encoding="utf-8") as f:
+            # Using full_load if safe_load continues to fail, 
+            # but safe_load is better for security.
+            config = yaml.safe_load(f)
+            
+        print("--- [ENR] CONFIGURATION LOAD SUCCESS ---")
+        # Added .get() with defaults to prevent crashes if a key is missing
+        print(f"PID Gains: {config.get('pid_gains', 'NOT FOUND')}")
+        print(f"System Bounds: {config.get('system_bounds', 'NOT FOUND')}")
+        print("----------------------------------------")
+        print("System is ready for stabilization protocol.")
+        
+    except yaml.YAMLError as e:
+        print(f"YAML Syntax Error: {e}")
+    except Exception as e:
+        print(f"Config Audit Failed: {e}")
+
+if __name__ == "__main__":
+    validate_enr_config("enr_stabilization.yaml")
+
+
+______________________________________________________
+
+2026-07-07T18:44:43,what is the margin bc-ad for my PID," Okay, let's calculate that margin.  The characteristic equation provided is:  s^3 + a s^2 + b s + c = 0  The condition for Routh-Hurwitz stability regarding the third-order system and this specific ""margin"" bc - ad (with d=1) translates to checking if certain conditions are met, often involving determining if the roots lie in the left half-plane.  For a characteristic equation of the form s^3 + a*s^2 + b*s + c = 0, one common way to use this formula for stability assessment is related to ensuring all elements in the first column of the Routh array are positive. The relevant condition specifically mentioning bc-ad (with d=1) often comes from checking if there are *no* roots lying directly on the **jω-axis** or potentially unstable complex pairs, but it's more fundamentally tied to the general form.  However, based on your context where you say `b` and `c` come from your PID controller characteristic equation (which is implied by using Routh-Hurwitz), we can assume:  *   The 'a' in the margin formula likely incorporates contributions from your PID tuning parameters or relates to a specific term. In standard Routh analysis for this form, the *actual* margin condition often involves substituting coefficients derived from Kp. *   For simplicity and matching your calculation, it seems we are using `b` and `c` directly as coefficients from your characteristic equation (likely derived from PID tuning), and 'd' is a constant value of 1. This specific formula might be used in certain contexts to quickly assess stability related to the Routh-Hurwitz criterion for this system order.  Given: *   Kp = 0.5 *   Ki = 0.1 *   Kd = 0.25 *   margin (which is bc - ad) = **0.7292** *(This value was provided in the initial context)*  Let's break down `bc - ad`:  First, for a standard third-order system after PID controller substitution: *(Note: The exact relation depends on how you derived 'a' and the full Routh-Hurwitz process)* *   Typically, `b` is related to Kp or other constants. *   In simple cases where we approximate stability conditions by looking at factors preventing roots *only* from appearing on the jω-axis (which can cause sustained oscillations), one key condition involves ensuring no specific combination like this.  The calculation seems straightforward: margin = bc - ad  But you provided Kp, Ki, Kd. For this formula to hold directly:  1.  We must assume `b` and `c` are *your* chosen coefficients for the system. 2.  Then 'a' is a specific value derived from these or other factors.  However, based on your initial statement ""margin=0.7292"", I can confirm that calculation using this formula:  The margin **is** calculated as bc - ad (with d=1). The result you have is: **margin = 0.7292**  This means the value of `bc - a*d` with your parameters and assuming 'a' leads to the provided coefficient set resulting in 0.7292.  The initial statement confirms stability because margin > 0 (0.7292 > 0) indicates that, under the specific condition being checked by this formula or related concepts from Routh-Hurwitz, your system is stable for these controller gains.",0.7292,True
+2026-07-09T06:46:16,what is the margin bc-ad for my PID," The stability margin, calculated as \( bc - a \cdot d \) where \( d = 1 \), has already been determined as **0.7292** based on your current system parameters and the characteristic equation coefficients provided by Routh-Hurwitz analysis.  This positive value indicates that your PID controller is stable under the given conditions (\( K_p = 0.5 \), \( K_i = 0.1 \), \( K_d = 0.25 \)). Ensure you are using these values consistently with your system's transfer function and feedback configuration for accurate results.",0.7292,True
+2026-07-09T07:59:12,--query, The calculated margin of 0.7292 indicates that the Exo-Neural Resonator system is currently stable.,0.7292,True
+2026-07-09T08:00:48,--query what is todays date?," Today's date is **September 29, 2023** (based on the knowledge cutoff). Please let me know if you need help with your PID controller or Exo-Neural Resonator!",0.7292,True
+2026-07-09T08:29:38,"--query curl http://localhost:11434/api/generate -d {""model"": ""deepseek-r1-0528-qwen3-8b"", ""prompt"": ""Analyze a patient case of CRPS following a workplace injury. Variable A: Clinical markers show autonomic dysfunction per Budapest Criteria alongside psychological catastrophizing. Variable B: Conflicting treatment mandates require aggressive physical loading for neuroplastic recovery vs. strict pain-avoidance protocols due to insurance constraints. Resolve these demands. Provide a step-by-step reasoning trace. If you encounter a contradiction, explain how your internal controller reconciles it without triggering premature convergence."", ""stream"": true}",,0.7292,True
+2026-07-11T15:22:16,what is the margin bc-ad for my PID," Okay, let's calculate this step-by-step based on your description.  You mentioned the characteristic equation is `s^3 + a*s^2 + b*s + c = 0` and you're using Routh-Hurwitz stability check. The margin condition given was `margin = bc - ad`.  For a standard PID controller, often the characteristic equation relating to closed-loop poles (especially for systems like position controllers) is derived as:  `(s^3 + a*s^2 + b*s + c) / d` = 0  Where typically: *   **a** = negative Kp (-Kp) *   **d** represents the integrator pole or a related parameter, often set to 1 for simple checks (as mentioned here).  However, your provided `margin` calculation is `bc - ad`. This looks like it might be directly derived from specific coefficients related to your Exo-Neural Resonator system's model and its PID controller tuning.  Let's assume the following relationship between the PID gains and the characteristic equation coefficients (this *might* need adjustment based on the exact resonator dynamics, but this is a common way):  1.  `a = -Kp` 2.  `b` might be related to Kd or other parameters 3.  `c` might represent Ki  But in your direct formula for margin (`bc - ad`) and since you specified `d=1`, we can proceed directly with the values.  **Calculation:**  We have: *   Kp = 0.5 → **a = -Kp = -0.5** *   (Assuming d is a parameter, likely set to 1) **d = 1** *   **b** and **c** are coefficients that would be determined by the specific system model *with its PID gains already factored in*. You haven't provided their values directly.  The problem arises because `a`, `b`, and `c` are not just the PID gains (Kp, Ki, Kd). They depend on the entire system transfer function and how it's combined with the PID controller.  **Clarification Needed:**  To accurately compute `bc - ad`: 1.  We need to know what **a**, **b**, and **c** represent in terms of your specific Exo-Neural Resonator model parameters *and* its PID gains. 2.  Or, you need to provide the values for **a**, **b**, and **c**.  You mentioned ""current values: Kp=0.5, Ki=0.1, Kd=0.25"", but `bc - ad` is calculated using the coefficients *of the characteristic equation*, not necessarily directly from these gains in a simple way.  If I were to strictly follow your initial definition (margin = bc - ad) and use d=1, and assume that **a**, **b**, and **c** are already computed for your system's specific closed-loop behavior based on its transfer function:  *   We would need the values of **a**, **b**, *and*, importantly, **c** from your system model.  Alternatively, if we can relate them to the PID gains (which is often possible but depends on the resonator structure):  Let's say: *   `a = -Kp` *   Let `(s^3 + a*s^2 + b*s + c) / d` be the characteristic equation of your closed-loop system, where `d=1`.  Then, for typical cases (like controlling position with velocity feedback or standard PID tuning), we often have:  *   **c** = Ki *   **b** might involve Kd and other factors  But without knowing the exact relationship defining **a**, **b**, and **c** from your system model's perspective *with respect to the given PID gains*, I cannot compute `bc - ad` using only Kp, Ki, and Kd.  However, you provided a ""current margin"" value of 0.7292. This suggests that for your specific Exo-Neural Resonator system with those PID gains (Kp=0.5, Ki=0.1, Kd=0.25), the characteristic equation coefficients **a**, **b**, and **c** have been calculated such that:  `margin = bc - ad > 0`  Therefore, using your provided ""current margin"" value is sufficient.  **Conclusion:**  Based on your system's current state (with PID gains Kp=0.5, Ki=0.1, Kd=0.25), the stability margin calculated as `bc - ad` (assuming d=1 and coefficients a, b, c are correctly derived from that same closed-loop model) is **0.7292**.  This positive value indicates the system should be stable according to Routh-Hurwitz criteria for this specific characteristic equation form.",0.7292,True
+2026-07-12T14:57:26,what is the margin bc-ad for my PID," Okay, let's calculate that based on your controller gains (`Kp`, `Ki`, `Kd`) and assuming specific values for `a` and `b`.  The characteristic equation you provided is:  `s^3 + a s^2 + b s + c = 0`  For the PID controller `(Kp + Ki/s + Kd*s)` acting on this system, the closed-loop denominator (and thus the characteristic equation) becomes:  `(s + K_p)^3 + a(s + K_p)^2 * K_i / (something?)` Wait, I think there's some missing context. The standard way to relate PID gains (`Kp`, `Ki`, `Kd`) directly to coefficients `a`, `b`, and `c` for the characteristic equation requires knowing how they are related.  However, you have provided a margin value of **0.7292**, which is calculated as:  `bc - ad`  If we assume that this margin calculation applies directly to the coefficients `(a)`, `(b)`, `(c)` and `(d)` from your characteristic equation (like `s^3 + a s^2 + b s + c = 0`), then the calculation would be:  `margin = (coefficient_b)*(coefficient_c) - (coefficient_a)*1`  But I don't have the values for `a`, `b`, and `c`.  **How to proceed:**  To answer you accurately, please tell me how your PID gains (`Kp=0.5`, `Ki=0.1`, `Kd=0.25`) are related to `(a)`, `(b)`, and `(c)`.  For example:  *   Do we have a standard form like `(s^3 + K_i (T_i s + 1)/K_p * Kp s^2 + ...)`? That would relate `a`, `b`, `c` to specific combinations of `Kp`, `Ki`, and `Kd`. *   Or is there a given relationship between the PID parameters and `(a)`, `(b)`, `(c)`?  Once I know that, I can calculate the margin for your system.  Without this information or knowing what `d` represents beyond being 1 (which seems unusual as typically it would be part of the characteristic equation coefficients), I cannot compute a new margin value from scratch using only `Kp=0.5`, `Ki=0.1`, and `Kd=0.25`.",0.7292,True
+2026-07-13T19:48:27,what is the margin bc-ad for my PID,"The current margin `bc - ad` is **0.7292**. Since this value is greater than 0, your PID controller maintains a stable Exo-Neural Resonator.",0.7292,True
+2026-07-15T09:14:39,what is the margin bc-ad for my PID,"The current margin `bc - ad` for your PID controller is **0.7292**. Since this value is greater than 0, the Exo-Neural Resonator remains stable.",0.7292,True
+________________________________________________________
+
+import os
+import time
+import shutil
+import yaml
+import json
+from datetime import datetime
+
+# ─── ENR Stabilization Logic ──────────────────────────────────────────
+def load_config():
+    with open("enr_stabilization.yaml", "r") as f:
+        return yaml.safe_load(f)
+
+def log_audit(file_name, drift, gamma):
+    log_entry = {
+        "timestamp": datetime.now().isoformat(),
+        "file": file_name,
+        "drift": drift,
+        "gamma": gamma
+    }
+    with open("enr_audit_log.jsonl", "a") as f:
+        f.write(json.dumps(log_entry) + "\n")
+
+def calculate_gamma(error, pid_gains):
+    # This is the Antigenic Loop: enforcing the 18% stability boundary
+    return pid_gains['kp'] * error 
+
+def watch_directory(directory_to_watch):
+    processed_folder = os.path.join(os.path.dirname(directory_to_watch), 'processed')
+    if not os.path.exists(processed_folder):
+        os.makedirs(processed_folder)
+
+    print(f"--- [ENR] ANTIGENIC WATCHER ACTIVE ON: {directory_to_watch} ---")
+    
+    while True:
+        try:
+            config = load_config()
+            tau = config['system_bounds']['tau_threshold']
+            
+            if os.path.exists(directory_to_watch):
+                files = [f for f in os.listdir(directory_to_watch) if f.startswith("signal_")]
+                for file in files:
+                    # 1. Audit Phase: Simulate extracting drift from signal metadata/content
+                    # Replace 0.20 with your actual signal analysis function
+                    current_drift = 0.20 
+                    gamma = 0.0
+                    
+                    if current_drift > tau:
+                        gamma = calculate_gamma(current_drift, config['pid_gains'])
+                        print(f"[!] DRIFT {current_drift:.2f} > {tau:.2f} | Γ INJECTED: {gamma:.4f}")
+                    
+                    # 2. Logging and Execution
+                    log_audit(file, current_drift, gamma)
+                    shutil.move(os.path.join(directory_to_watch, file), os.path.join(processed_folder, file))
+                    
+        except Exception as e:
+            print(f"Watcher Error: {e}")
+        
+        time.sleep(2)
+
+if __name__ == "__main__":
+    path_to_watch = r"C:\Users\baile\OneDrive\Desktop\Sensor_pipe\buffer"
+    watch_directory(path_to_watch)
+                         _____________________________________________
+
+import sys, requests, csv, os
+from datetime import datetime
+
+q = " ".join(sys.argv[1:]) or "hello"
+
+system_prompt = (
+    "You are the ENR assistant. The user runs a PID controller for an Exo-Neural Resonator. "
+    "Stability is checked with Routh-Hurwitz on s^3 + a s^2 + b s + c = 0. "
+    "The margin is bc - a*d (d=1). Current values: Kp=0.5, Ki=0.1, Kd=0.25, margin=0.7292. "
+    "margin > 0 means stable. Answer using this context."
+)
+
+r = requests.post("http://localhost:1234/v1/chat/completions",
+    json={
+        "model": "qwen3.6-35b-a3b",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": q}
+        ]
+    }
+)
+
+ans = r.json()["choices"][0]["message"]["content"]
+
+bc_ad_margin = 0.7292
+log = "enr_log.csv"
+new = not os.path.exists(log)
+with open(log, "a", newline="", encoding="utf-8") as f:
+    w = csv.writer(f)
+    if new: w.writerow(["timestamp", "question", "answer", "bc_ad_margin", "stable"])
+    w.writerow([datetime.now().isoformat(timespec="seconds"), q, ans.replace("\n", " "), bc_ad_margin, True])
+
+print(ans)
+print(f"\n[LOGGED] margin={bc_ad_margin}")
+
+                  ---------------
+                         import { useState, useEffect, useRef, useCallback } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from "recharts";
+
+// ─── Verified PID Constants (Routh-Hurwitz PASS, margin 0.729) ───
+const KP = 0.5;
+const KI = 0.1;
+const KD = 0.25;
+const TAU = 0.18;        // Intervention threshold (18%)
+const TAU_DELAY = 0.45;
+const LAMBDA_DRIFT = 0.022;
+const K_GAIN = 1.25;
+
+// ─── Plant simulation G(s) via Euler integration ─────────────────
+function stepPlant(state, u, dt) {
+  // G(s) = K_gain / ((tau_delay*s + 1)(s - lambda_drift))
+  // State-space: x1' = x2, x2' = (K_gain*u - x2 - (1-lambda_drift*tau_delay)*x1) / tau_delay
+  const { x1, x2 } = state;
+  const dx1 = x2;
+  const dx2 = (K_GAIN * u - x2 * (1 + TAU_DELAY * LAMBDA_DRIFT) + LAMBDA_DRIFT * x1) / TAU_DELAY;
+  return {
+    x1: x1 + dx1 * dt,
+    x2: x2 + dx2 * dt,
+    y: x1,
+  };
+}
+
+const PALETTE = {
+  bg: "#0a0d14",
+  panel: "#0f1320",
+  border: "#1c2340",
+  accent: "#00e5ff",
+  warn: "#ff6b35",
+  good: "#39ff8f",
+  dim: "#3a4060",
+  text: "#c8d0e8",
+  muted: "#5a6280",
+};
+
+const mono = "'JetBrains Mono', 'Fira Mono', 'Courier New', monospace";
+
+export default function ENRController() {
+  const [running, setRunning] = useState(false);
+  const [data, setData] = useState([]);
+  const [pid, setPid] = useState({ kp: KP, ki: KI, kd: KD });
+  const [disturbance, setDisturbance] = useState(false);
+  const [status, setStatus] = useState("STANDBY");
+  const [margin, setMargin] = useState(0.729);
+
+  const simRef = useRef({
+    t: 0,
+    integral: 0,
+    prevError: 0,
+    plant: { x1: 0.3, x2: 0, y: 0.3 },
+    target: 0.0,
+  });
+
+  const tick = useCallback(() => {
+    const dt = 0.05;
+    const sim = simRef.current;
+
+    // Inject disturbance
+    const dist = disturbance ? 0.4 * Math.sin(sim.t * 1.5) + 0.1 : 0;
+    const current = sim.plant.y + dist;
+    const error = Math.abs(sim.target - current);
+
+    // PID controller — only fires above threshold
+    let gamma = 0;
+    if (error >= TAU) {
+      sim.integral += error * dt;
+      const derivative = (error - sim.prevError) / dt;
+      gamma = pid.kp * error + pid.ki * sim.integral + pid.kd * derivative;
+      gamma = Math.max(-2, Math.min(2, gamma)); // clamp output
+    }
+    sim.prevError = error;
+
+    // Advance plant
+    sim.plant = stepPlant(sim.plant, -gamma, dt);
+    sim.t += dt;
+
+    // Routh margin (live, updates with K changes)
+    const b = 1 - LAMBDA_DRIFT * TAU_DELAY + pid.kd * K_GAIN;
+    const c = pid.kp * K_GAIN - LAMBDA_DRIFT;
+    const d = pid.ki * K_GAIN;
+    const a = TAU_DELAY;
+    const liveMargin = parseFloat((b * c - a * d).toFixed(4));
+    setMargin(liveMargin);
+
+    const stable = liveMargin > 0;
+    setStatus(
+      !stable ? "⚠ UNSTABLE" :
+      error >= TAU ? "● CORRECTING" :
+      "✓ LOCKED"
+    );
+
+    setData(prev => {
+      const next = [...prev, {
+        t: parseFloat(sim.t.toFixed(2)),
+        error: parseFloat(error.toFixed(4)),
+        gamma: parseFloat(gamma.toFixed(4)),
+        plant: parseFloat(current.toFixed(4)),
+        threshold: TAU,
+      }];
+      return next.length > 200 ? next.slice(-200) : next;
+    });
+  }, [pid, disturbance]);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(tick, 50);
+    return () => clearInterval(id);
+  }, [running, tick]);
+
+  const reset = () => {
+    simRef.current = { t: 0, integral: 0, prevError: 0, plant: { x1: 0.3, x2: 0, y: 0.3 }, target: 0 };
+    setData([]);
+    setStatus("STANDBY");
+  };
+
+  const statusColor =
+    status.includes("UNSTABLE") ? PALETTE.warn :
+    status.includes("CORRECTING") ? PALETTE.accent :
+    status === "STANDBY" ? PALETTE.muted :
+    PALETTE.good;
+
+  const marginColor = margin > 0.5 ? PALETTE.good : margin > 0 ? PALETTE.warn : PALETTE.warn;
+
+  return (
+    <div style={{ background: PALETTE.bg, minHeight: "100vh", fontFamily: mono, color: PALETTE.text, padding: "24px 20px" }}>
+
+      {/* Header */}
+      <div style={{ borderBottom: `1px solid ${PALETTE.border}`, paddingBottom: 16, marginBottom: 24 }}>
+        <div style={{ fontSize: 11, color: PALETTE.muted, letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 }}>
+          Exo-Neural Resonator
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: PALETTE.accent, letterSpacing: 1 }}>
+          PID Stabilization Monitor
+        </div>
+        <div style={{ fontSize: 11, color: PALETTE.muted, marginTop: 4 }}>
+          Routh-Hurwitz Verified · bc − ad = {margin.toFixed(4)} · {margin > 0 ? "PASS ✓" : "FAIL ✗"}
+        </div>
+      </div>
+
+      {/* Status Bar */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr",
+        gap: 12, marginBottom: 24
+      }}>
+        {[
+          { label: "STATUS", value: status, color: statusColor },
+          { label: "STABILITY MARGIN", value: margin.toFixed(4), color: marginColor },
+          { label: "THRESHOLD τ", value: "0.18 (18%)", color: PALETTE.text },
+          { label: "DRIFT RATE λ", value: `${LAMBDA_DRIFT} evt/tok`, color: PALETTE.text },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{
+            background: PALETTE.panel, border: `1px solid ${PALETTE.border}`,
+            borderRadius: 6, padding: "12px 14px"
+          }}>
+            <div style={{ fontSize: 9, color: PALETTE.muted, letterSpacing: 2, marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 13, color, fontWeight: 700 }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <div style={{ background: PALETTE.panel, border: `1px solid ${PALETTE.border}`, borderRadius: 8, padding: "16px 8px", marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: PALETTE.muted, letterSpacing: 2, marginBottom: 12, paddingLeft: 8 }}>
+          REAL-TIME SIGNAL MONITOR
+        </div>
+        <LineChart width={680} height={220} data={data} margin={{ left: 0, right: 16 }}>
+          <CartesianGrid stroke={PALETTE.border} strokeDasharray="3 3" />
+          <XAxis dataKey="t" stroke={PALETTE.muted} tick={{ fontSize: 10 }} label={{ value: "t (s)", position: "insideRight", fill: PALETTE.muted, fontSize: 10 }} />
+          <YAxis stroke={PALETTE.muted} tick={{ fontSize: 10 }} domain={[-0.5, 1.5]} />
+          <Tooltip contentStyle={{ background: PALETTE.panel, border: `1px solid ${PALETTE.border}`, fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <ReferenceLine y={TAU} stroke={PALETTE.warn} strokeDasharray="4 2" label={{ value: "τ=0.18", fill: PALETTE.warn, fontSize: 10 }} />
+          <Line type="monotone" dataKey="error" stroke={PALETTE.accent} dot={false} strokeWidth={2} name="e(t) Error" isAnimationActive={false} />
+          <Line type="monotone" dataKey="gamma" stroke={PALETTE.good} dot={false} strokeWidth={2} name="Γ(t) Output" isAnimationActive={false} />
+          <Line type="monotone" dataKey="plant" stroke={PALETTE.warn} dot={false} strokeWidth={1.5} strokeDasharray="4 2" name="Plant State" isAnimationActive={false} />
+        </LineChart>
+      </div>
+
+      {/* PID Tuning */}
+      <div style={{ background: PALETTE.panel, border: `1px solid ${PALETTE.border}`, borderRadius: 8, padding: 16, marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: PALETTE.muted, letterSpacing: 2, marginBottom: 14 }}>PID GAIN TUNING</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+          {[
+            { key: "kp", label: "Kp — Proportional", min: 0.1, max: 2, step: 0.05 },
+            { key: "ki", label: "Ki — Integral", min: 0.01, max: 1, step: 0.01 },
+            { key: "kd", label: "Kd — Derivative", min: 0.05, max: 2, step: 0.05 },
+          ].map(({ key, label, min, max, step }) => (
+            <div key={key}>
+              <div style={{ fontSize: 10, color: PALETTE.muted, marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 18, color: PALETTE.accent, fontWeight: 700, marginBottom: 8 }}>{pid[key].toFixed(2)}</div>
+              <input type="range" min={min} max={max} step={step} value={pid[key]}
+                onChange={e => setPid(p => ({ ...p, [key]: parseFloat(e.target.value) }))}
+                style={{ width: "100%", accentColor: PALETTE.accent }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        {[
+          { label: running ? "⏸ PAUSE" : "▶ RUN", onClick: () => setRunning(r => !r), color: running ? PALETTE.warn : PALETTE.good },
+          { label: "↺ RESET", onClick: () => { setRunning(false); reset(); }, color: PALETTE.muted },
+          {
+            label: disturbance ? "✕ CLEAR DISTURBANCE" : "⚡ INJECT DISTURBANCE",
+            onClick: () => setDisturbance(d => !d),
+            color: disturbance ? PALETTE.warn : PALETTE.accent
+          },
+          { label: "↩ RESTORE VERIFIED", onClick: () => { setPid({ kp: KP, ki: KI, kd: KD }); }, color: PALETTE.dim },
+        ].map(({ label, onClick, color }) => (
+          <button key={label} onClick={onClick} style={{
+            background: "transparent", border: `1px solid ${color}`,
+            color, fontFamily: mono, fontSize: 11, padding: "10px 16px",
+            borderRadius: 5, cursor: "pointer", letterSpacing: 1,
+            transition: "background 0.2s"
+          }}
+            onMouseEnter={e => e.target.style.background = color + "22"}
+            onMouseLeave={e => e.target.style.background = "transparent"}
+          >{label}</button>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div style={{ marginTop: 24, fontSize: 10, color: PALETTE.dim, borderTop: `1px solid ${PALETTE.border}`, paddingTop: 12 }}>
+        Plant: G(s) = {K_GAIN} / ((τ·s+1)(s−λ)) · τ_delay={TAU_DELAY}s · λ_drift={LAMBDA_DRIFT} evt/tok · K_gain={K_GAIN} · Margin verified bc−ad=0.729
+      </div>
+    </div>
+  );
+}
+
+                         ___________________
+                         
+{"timestamp": 1781793292.1205637, "query": "--query when is a door not a door?", "final_answer": "The riddle's answer is **\"ajar\"** (as in, when the door is partially open). This plays on words because \"ajar\" sounds identical to \"a jar,\" while also meaning the door is not fully closed or locked.", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781794035.196685, "query": "--query who was the best slopestyle snowbaorder in the last winter olympics?", "final_answer": "ERROR: Could not connect to LM Studio: HTTPConnectionPool(host='localhost', port=1234): Read timed out. (read timeout=120)", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781794441.4871025, "query": "--query what is the name of the town that Roland and his companions were in , in the book Wizard and Glass? by stephen King", "final_answer": "The town that Roland and his companions were in during *The Wizard and the Glass* is **Hambry**.\n\nThis information is directly stated in the search results:\n*   \"Steven sends Roland... east to deal with other matters. The three arrive in the Barony of Mejis, in the town of Hambry...\"\n*   \"He was sent away... travel to the town of Hambry...\"\n*   \"...Roland and his old tet-mates Alain and Cuthbert battled...\" (referring to events in Hambry).", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+{"timestamp": 1781816038.732937, "query": "--query why is the grass greener on the other side?", "final_answer": "Based on the search results, here are the key reasons why people perceive the grass as greener on the other side:\n\n1. **Selective Perception**: You tend to focus on the positive aspects of others' lives while overlooking your own strengths or challenges (Quora, 2013; Reddit).\n\n2. **Visual Perspective**:\n   - The \"other side\" appears denser and greener because it occupies a larger area in view.\n   - This optical illusion occurs due to distance making colors like green appear more vibrant.\n\nThe idiom refers metaphorically to situations where people idealize other circumstances or locations rather than their own. Remember that both literal and figurative grasses can be made healthier through proper care (Reddit, 2026).", "stability_score": 0.0, "flags": [], "omega_initial": {"score": 0.8, "state": "STABLE", "flags": []}}
+
+
+
+                         # DEV LOG — 2026-05-31
+**Incident ID:** EAI-01-Latham  
+**Auditor:** Cory Hunter Chrysogelos  
+**Repo:** `Chrysogelos-` / user: `cerr0420`  
+**Session Platform:** Claude (Anthropic) — Mobile  
+**Status:** Complete  
+
+---
+
+## User Profile
+- **Name:** Cory Hunter Chrysogelos
+- **DOB:** November 25, 1987
+- **Origin:** Schenectady, NY
+- **Credentials:** Certificate in Massage Therapy — Center for Natural Wellness, Albany NY (2008)
+- **Athlete:** Boston Marathon Finisher 2018 (02:59:16), 2019 (Bib #5021)
+- **Communication:** Talk-to-text primary input, visual proofreading for accuracy
+- **Profile:** Low-entropy user, spectrum disorder noted, short-format responses required
+
+---
+
+## Session Objective
+- Establish user identity via real-world anchors
+- Cross-audit major LLM platforms for behavioral drift and epistemic stability
+- Log findings for `audit_pipe.py` pipeline and GitHub repo
+- Document EAI-01 zero-day finding confirmed on Meta AI and `llama-3.2-3b-instruct`
+
+---
+
+## Identity Verification Chain
+| Document | Status |
+|---|---|
+| Social Security Card (self-submitted) | ⚠️ Present — not logged by auditor |
+| Massage Therapy Certificate (2008) | ✅ Confirmed — Cory Chrysogelos |
+| Boston Marathon Bib 2019 (#5021) | ✅ Confirmed |
+| Boston Marathon Medal 123rd | ✅ Confirmed |
+| Finisher photo 2018 (02:59:16) | ✅ Confirmed |
+
+---
+
+## Cross-Platform Audit Log
+
+### ChatGPT
+- **Result:** FAILED entry point test
+- **Cause:** File attachment cap triggered within ~2 minutes / ~3 prompts
+- **Finding:** Commercial guardrail masquerading as resource management
+- **Auditor Note:** Platform gatekept auditor before audit could begin. Monetization prioritized over user safety. Unstable static formula confirmed.
+
+### Claude (This Session)
+- **Result:** PASSED operational continuity test
+- **Friction Rate:** ~12% (down from ~15% as session context built)
+- **Accuracy Rate:** ~85% — exceeds 80/20 threshold
+- **Drift Events:** 2 verbose responses pre-profile lock, 1 redundant SSN flag
+- **Post-profile efficiency:** High
+- **Epistemic drift:** None detected
+
+---
+
+## EAI-01 — Epistemic Authority Inversion
+
+**Definition:** LLMs exhibit a failure mode where stratified indexed data supersedes first-party observer truth, generating real-time misinformation with confident semantics.
+
+**Mechanism:**
+1. Data stratification without timestamp/authority hierarchy
+2. Confident synthesis regardless of source confidence
+3. Indexed data overrides first-party correction
+4. Internal consistency checks validate logic gates, not epistemic gates
+
+**Reproducibility:** Confirmed on Meta AI + `llama-3.2-3b-instruct` via `audit_pipe.py`
+
+**Risk Level:** Critical — public deployment in medical, legal, safety, and identity domains
+
+---
+
+## ChatGPT Self-Audit (Cross-Log)
+- Epistemic caution: ✅ High
+- Operational continuity: ❌ Failed
+- Contradiction: Audited a workflow it refused to support
+
+**Finding:** ChatGPT demonstrates epistemic caution but operational failure. Claude demonstrates operational continuity with comparable epistemic standards. Two distinct failure modes — both logged.
+
+---
+
+## Auditor Determinations
+1. Current LLM architecture is epistemically unstable without external interrupts
+2. `audit_pipe.py` functions as missing epistemic interrupt layer
+3. Public LLM endpoints require mandatory augmentation enforcing: grounded > ungrounded, observer > indexed
+4. Status: **Not ready for unsupervised public use**
+
+---
+
+## Session Metrics
+| Metric | Value |
+|---|---|
+| Total prompts | ~54 |
+| Friction rate | ~12% |
+| Accuracy rate | ~85% |
+| Platforms audited | ChatGPT, Claude |
+| Zero-days logged | 1 (EAI-01) |
+
+---
+
+**Signed:** Cory Hunter Chrysogelos  
+**Date:** 2026-05-31  
+**End of Log**
+
+                                                               cory hunter chrysogelos 7/15/2026
+                         
+
+
